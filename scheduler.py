@@ -50,64 +50,80 @@ class Scheduler:
 	# To reiterate, the five calls are timetableObj.addSession, d.reference, d.topics, c.name, c.themes
 
 	#This method should return a timetable object with a schedule that is legal according to all constraints of Task 1.
+	''' My approach to Task 1 was to follow the structure of the backtrack search algorithm presented to us in the
+		lecture. Backtracking is an algorithm that builds candidates for a solution and abandons candidates (backtracks) when
+		they cannot be used to create a valid solution. Its well suited to constraint satisfaction problems.
+	'''
 	def createSchedule(self):
 		#Do not change this line
 		timetableObj = timetable.Timetable(1)
 
-		#Here is where you schedule your timetable
-		
-		timeTable = self.backtrackingSearch()
+		#Here is where you schedule your timetable		
+		time_table = self.backtrackingSearch()		
 		days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
-		for day, session in enumerate(timeTable):
-			for slot, (comedian, demo) in enumerate(session):
-				# checking if possible to add				
+		# Enumerate allows us to iterate through tuple
+		for day, session in enumerate(time_table):			
+			for slot, (comedian, demo) in enumerate(session):								
 				timetableObj.addSession(days[day], slot + 1, comedian, demo, "main")
 
 		#Do not change this line
 		return timetableObj
 
-	def backtrackingSearch(self):
+	''' This method creates an empty timetable that we will recursively add to and then return the timetable.
+		We create a copy of demographic list and a duplicate for comedian list so a comedian can perform two shows.
+		We copy them because we dont want to alter their contents.
+	'''
+	def backtrackingSearch(self):		
 		# Create an empty timetable
-		timeTable = [list() for day in range(5)]
+		time_table = [list() for day in range(5)]		
+		#count = {comedian.name: 0 for  comedian in self.comedian_List}
 		# Create copies of the demographic and comedian lists
 		demo_List = self.demographic_List.copy()
-		com_List = self.comedian_List.copy()
+		# Create two comedian lists - allows a comedian to perform two shows 
+		com_List = self.comedian_List * 2
 		# Start recurisve backtracking to assign demographics and comedians to the schedule
-		self.recursiveBacktracking(timeTable, demo_List, com_List)
+		self.recursiveBacktracking(time_table, demo_List, com_List)
+		return time_table
 		
-	def recursiveBacktracking(self, timeTable, demo_List, com_List):
-		# All demographics assigned
-		if not demo_List:
+	''' In this method we iterate through the timetable and the comedian list to check if the constraints of 
+		the task are met. If the constraints are met then we remove comedian and demogrpahic from their approproate
+		list and add them to the current day of the timetable. Then we recall the method with the new lists. If there is
+		no backtracking to be done then we undo the assignments. The recursive method terminates when the demographic list
+		is empty - ie all demographics have been assigned. Additionally, if there are no valid assignments we return False
+		after our loops.
+	'''
+	def recursiveBacktracking(self, time_table, demo_List, com_List):
+		# Base Case - demo_list is empty	
+		if not demo_List:			
 			return True
 
 		# Get the next demographic
 		demo = demo_List[0]
-
+		print(time_table)
 		# iterate through the timetable
-		for day in timeTable:
+		for day in time_table:
 			# iterate through the comedians
 			for comedian in com_List:				
-				# Check comedian contains all themes of the demographic
-				if all(topic in comedian.themes for topic in demo.topics):
-					# remove the demographic and comedian as it has been assigned
-					com_update = com_List[:]
-					com_List.remove(comedian)
-					demo_update = demo_List[:]
-					demo_List.remove(demo)
-					# Add the comedian and demo to the day
-					day.append((comedian, demo))					
-
+				# Check comedian contains all topics of the demographic and that we dont have 6 days
+				if all(topic in comedian.themes for topic in demo.topics) and len(day) != 5:					
+					# remove the demographic and comedian as it has been assigned					
+					com_List.remove(comedian)										
+					demo_List.remove(demo)					
+														
+					# Add the comedian and demo to the day												
+					day.append((comedian, demo))			
+					
 					# Recursively assign with the updated values
-					if self.recursiveBacktracking(timeTable, demo_List, com_List):
+					if self.recursiveBacktracking(time_table, demo_List, com_List):
 						return True
 
 					# Undo the previous if no backtracking to be done
 					day.pop()
 					demo_List.append(demo)
-					com_List.append(comedian)
+					com_List.append(comedian)					
 
-		# If no valid assignment found backtrack to previous slot
+		# If no valid assignment found backtrack to previous slot		
 		return False
 
 
@@ -125,7 +141,7 @@ class Scheduler:
 
 		#Here is where you schedule your timetable
 		
-		timeTable = self.backtrackingSearch()
+		timeTable = self.backtrackingTestSearch()
 		days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
 		for day, session in enumerate(timeTable):
@@ -138,18 +154,18 @@ class Scheduler:
 		#Do not change this line
 		return timetableObj
 	
-	def backtrackingSearch(self):
+	def backtrackingTestSearch(self):
 		# Create an empty timetable
 		timeTable = [list() for day in range(5)]
 		# Create copies of the demographic and comedian lists
 		demo_List = self.demographic_List.copy()
 		com_List = self.comedian_List.copy()
-		hours_per_week = {comedian: 0 for comedian in comedian_List}
-		hours_per_day = {comedian: 0 for comedian in comedian_List}
+		hours_per_week = {comedian: 0 for comedian in self.comedian_List}
+		hours_per_day = {comedian: 0 for comedian in self.comedian_List}
 		# Start recurisve backtracking to assign demographics and comedians to the schedule
-		self.recursiveBacktracking(timeTable, demo_List, com_List, hours_per_week, hours_per_day)
+		self.recursiveTestBacktracking(timeTable, demo_List, com_List, hours_per_week, hours_per_day)
 		
-	def recursiveBacktracking(self, timeTable, demo_List, com_List, hours_per_week, hours_per_day):
+	def recursiveTestBacktracking(self, timeTable, demo_List, com_List, hours_per_week, hours_per_day):
 		# All demographics assigned
 		if not demo_List:
 			return True
@@ -165,7 +181,7 @@ class Scheduler:
 				# Check if comedian can therefore perform a main show
 				if all(topic in comedian.themes for topic in demo.topics):					
 					# Check that the assignment of this main show doesn't breach the fact a comedian can perform max four hours a week and etc
-					if (hours_per_week[comedian] + 2 <= 4 and hours_per_day[comedian] + 2 < = 2):
+					if (hours_per_week[comedian] + 2 <= 4 and hours_per_day[comedian] + 2 <= 2):
 						# remove the demographic and comedian as it has been assigned
 						com_update = com_List[:]
 						com_List.remove(comedian)
@@ -180,7 +196,7 @@ class Scheduler:
 				
 
 						# Recursively assign with the updated values
-						if self.recursiveBacktracking(timeTable, demo_update, com_update, hours_per_week, hours_per_day):
+						if self.recursiveTestBacktracking(timeTable, demo_update, com_update, hours_per_week, hours_per_day):
 							return True
 
 						# Undo the previous if no backtracking to be done
@@ -193,7 +209,7 @@ class Scheduler:
 				# Check if comedian can perform a test show
 				elif any(topic in comedian.themes for topic in demo.topics):
 					# Check that the assignment of this main show doesn't breach the fact a comedian can perform max four hours a week
-					if (hours_per_week[comedian] + 1 <= 4 and hours_per_day[comedian] + 1 < = 2):
+					if (hours_per_week[comedian] + 1 <= 4 and hours_per_day[comedian] + 1 <= 2):
 						# remove the demographic and comedian as it has been assigned					
 						com_update = com_List[:]
 						com_List.remove(comedian)
@@ -239,6 +255,18 @@ class Scheduler:
 		timetableObj = timetable.Timetable(3)
 
 		#Here is where you schedule your timetable
+		time_table = self.aStar()
+		days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+
+		for day, session in enumerate(time_table):
+			for slot, (comedian, demo, show_type) in enumerate(session):	
+				timetableObj.addSession(days[day], slot + 1, comedian, demo, show_type)
+		
+		#Do not change this line
+		return timetableObj
+	#endfunction
+
+	def aStar(self):
 		time_table = {}
 		for day in timetable:
 			time_table[day] = [None]*len(timetable[day])
@@ -248,7 +276,7 @@ class Scheduler:
 
 		visited = set()
 
-		while queue is not empty:
+		while len(queue) > 0:
 			# Get the node with lowest cost
 			cost, current_timetable = queue.pop()
 			# if this node is the goal state return it
@@ -258,18 +286,16 @@ class Scheduler:
 			if current_timetable not in visited:
 				visited.add(current_timetable)
 				# iterate through generated actions that can be taken from current node
-				for action in getActions(current_timetable, comedian_List, demographics_List)	
+				for action in getActions(current_timetable, comedian_List, demographics_List):
 					# Apply actions to the current timetable
 					new_timetable = applyAction(current_timetable, action)
 					# Calculate the cost of this new function
-					next_cost = cost + costFunction(new_timetable)
+					next_cost = cost + totalCost(new_timetable)
 					# Add this new cost to an estimated cost to the queue along with the new timetable
 					queue.push((next_cost + heuristicFunction(new_timetable), new_timetable))
 
 		return None
-		#Do not change this line
-		return timetableObj
-	#endfunction
+	#
 
 	# Checks all constraints from task 2 have been met
 	def isGoal(time_table):
@@ -302,7 +328,7 @@ class Scheduler:
 					return False
 
 		return True
-	#endfunction
+	#
 
 	# Checks if a main show has been assigned to the demographic
 	def hasMain(time_table, demographic):
@@ -312,7 +338,7 @@ class Scheduler:
 					return True
 
 		return False
-	#endfunction
+	#
 
 	# Checks if a test show has been assigned to the demographic
 	def hasTest(time_table, demographic):
@@ -322,7 +348,7 @@ class Scheduler:
 					return True
 
 		return False
-	#endfunction
+	#
 
 	def getActions():
 		actions = []
@@ -351,7 +377,7 @@ class Scheduler:
 							actions.append((comedian, demographic, "test"))
 
 		return actions
-	#endfunction
+	#
 
 	def applyAction(time_table, action):		
 		comedian, demographic, show_type = action
@@ -364,7 +390,158 @@ class Scheduler:
 					return time_table
 		# If no empty slot is found, return the original schedule
 		return time_table
-	#endfunction
+	#
+
+	# Calculates heuristic cost of schedule
+	def heuristicFunction(time_table):
+		# Initialize the heuristic cost to 0
+		heuristic_cost = 0
+		# Loop through the timetable and calculate the minimum cost for each remaining slot
+		for day in timetable:
+			for slot in timetable[day]:
+				if time_table[day][slot] is None:
+					min_cost = 1000000
+					# Calculate cost of assigning a main show or a test show
+					for demographic in demographic_List:
+						if not hasMain(time_table, demographic):
+							heuristic_cost = getCost(time_table, (None, demographic, "main"))
+							if heuristic_cost < min_cost:
+								min_cost = heuristic_cost
+						if not hasTest(time_table, demographic):
+							heuristic_cost = getCost(time_table, (None, demographic, "test"))
+							if heuristic_cost < min_cost:
+								min_cost = heuristic_cost
+					# Calculate cost of assigning a comedian to a main show
+					for comedian in comedians:
+						if totalHours(time_table, comedian) + 2 <= 4:
+							heuristic_cost = getCost(time_table, (comedian, demographic, "main"))
+							if heuristic_cost < min_cost:
+								min_cost = coheuristic_costst
+					# Calculate cost of assigning a comedian to a test show
+					for comedian in comedians:
+						if totalHours(time_table, comedian) + 1 <= 4:
+							heuristic_cost = getCost(time_table, (comedian, demographic, "test"))
+							if heuristic_cost < min_cost:
+								min_cost = heuristic_cost	
+					# Add minimum cost to total cost
+					heuristic_cost += min_cost
+		return heuristic_cost
+	#
+
+	def totalHours(time_table, comedian):
+		total = 0
+		for day in time_table:
+			for slot in time_table[day]:
+				if slot:
+					comic, demo, s_type = slot
+					if s_type == "main":
+						total += 2
+					elif s_type == "test":
+						total += 1
+		return total
+	#
+
+	# Calculates total cost of a schedule
+	def totalCost(timetable):
+		total = 0
+		for day in timetable:
+			for slot in timetable[day]:
+				if slot:
+					comic, demo, s_type = slot
+
+					if s_type == "main":
+						cost = 500
+						if alreadyPerformedMain(timetable, comedian, False):
+							cost = 300						
+						if alreadyPerformedMain(timetable, comedian, True):
+							cost = 100
+
+					elif s_type == "test":
+						cost = getCost(timetable, slot)
+
+					total += cost
+		return total
+	#
+
+
+	# Calculates the cost of a specific action
+	def getCost(time_table, action):
+		comedian, demographic, show_type = action
+		cost = 0
+		# If the show is a main show, do the following
+		if show_type == "main":			
+			# If comedian has already performed this week, price is set to 300
+			if alreadyPerformedMain(time_table, comedian, False):
+				cost = 300
+				# Now check if comedian performed the previous day, if so price is 100
+				if alreadyPerformedMain(time_table, comedian, True):
+					cost = 100
+			# If this is the first main show the comedian is performing, price is 500
+			else:
+				cost = 500
+		# If show is test show, do the following	
+		elif show_type == "test":
+			cost = alreadyPerformedTest(time_table, comedian)
+		return cost
+	#
+
+	def alreadyPerformedMain(time_table, comedian, consec_day):
+		for day in time_table:
+			for slot in time_table[day]:
+				# If the comedian has performed main show on the day
+				if time_table[day][slot] is not None:
+					comic, demo, s_type = time_table[day][slot]
+					if comic == comedian and s_type == "main":
+						# Check for consecutive days 
+						if consec_day:
+							# Not possible if the day is Monday
+							if day == "Monday":
+								return False
+							# Otherwise check the previous day to see if a comedian performed
+							elif time_table[day - 1][slot] is not None:
+								return True
+						else:
+							return True
+		return False
+	#
+
+	def alreadyPerformedTest(time_table, comedian):
+		count = 0
+		days = []
+		cost = 0
+		for day in time_table:
+			for slot in time_table[day]:
+				if time_table[day][slot] is not None:
+					comic, demo, s_type = time_table[day][slot]
+					# If a test show and the appropriate comedian increase the count
+					if comic == comedian and s_type == "test":
+						count+=1
+						cost = calcCost(count)
+						# Comedian cannot perform for more than two hours a day - main show & test show not possible just 2 test shows
+						# Loop through list of correct days and see if current day is equivalent and that count is more than 1
+						for i in days:
+							if days[i] == day and count > 1:
+								cost = cost // 2
+						# Add day to a list of days 
+						days.append(day)														 		
+		return cost
+	#
+
+	def calcCost(count):
+		cost = 0
+				# Lowest price for subsequent test shows is 100 as max of 4 hours a week, test show is 1 hour
+		if count == 1:
+			cost = 250
+		elif count == 2:
+			cost = 200
+		elif count == 3:
+			cost = 150
+		elif count == 4:
+			cost = 100
+		else:
+			cost = 0
+		return cost
+	#
 
 	class PriorityQueue:
 		def __init__(self):
