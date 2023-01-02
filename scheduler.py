@@ -135,16 +135,21 @@ class Scheduler:
 	#We are also concerned with stage hours. A comedian can be on stage for a maximum of four hours a week.
 	#Main shows are 2 hours long, test shows are 1 hour long.
 	#A comedian cannot be on stage for more than 2 hours a day.
+
+	''' In Task 2 I will again be using backtracking as it is well suited to this constraint satisfaction
+		problem
+	'''
 	def createTestShowSchedule(self):
 		#Do not change this line
 		timetableObj = timetable.Timetable(2)
 
 		#Here is where you schedule your timetable
-		
+		# Call our backtracking method to add to the timetable
 		timeTable = self.backtrackingTestSearch()
-		#print(timeTable)
+		# List of days for adding to timetableObj
 		days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 
+		# Iterate through the timetable and add each element to the timetableObj to return
 		for day, session in enumerate(timeTable):
 			for slot, (comedian, demo, show_type) in enumerate(session):									
 				timetableObj.addSession(days[day], slot + 1, comedian, demo, show_type)
@@ -152,72 +157,95 @@ class Scheduler:
 		#Do not change this line
 		return timetableObj
 	
+	''' This method is used to create an empty timetable that will be added upon on recursive calls of backtracking
+		and then returned as a complete timetable. We create two demographic lists in order to be able to assign
+		each demographic one main and one test show. Then we use the dictionary hours_per_week to track the amount
+		of hours a comedian has performed in the week. And use a dictionary hours_per_day to track the amount of
+		hours a comedian performed in a day.
+	'''
 	def backtrackingTestSearch(self):
 		# Create an empty timetable
 		timeTable = [list() for day in range(5)]
-		# Create copies of the demographic and comedian lists
+		# Create 2 demographic list copies - Each demographic must be assigned a main and test show
 		main_List = self.demographic_List.copy()
 		test_List = self.demographic_List.copy()		
+		# Create a dictionary to track a comedians hours in a week - A comedian can perform a maximum of 4 hours
+		# of shows a week
 		hours_per_week = {comedian: 0 for comedian in self.comedian_List}				
+		# Create a dictionary to track a comedians hours in a day, combine day and comedian as the key
+		# as we will iterate twice through the days. - A comedian cannot perform for more than two hours a day
 		hours_per_day = {(comedian, day) : 0 for comedian in self.comedian_List for day in range(5)}				
 		# Start recurisve backtracking to assign demographics and comedians to the schedule
-		self.recursiveTestBacktracking(timeTable, main_List, test_List, hours_per_week, hours_per_day)		
+		self.recursiveTestBacktracking(timeTable, main_List, test_List, hours_per_week, hours_per_day)	
+		# Return the timetable	
 		return timeTable
 		
+	''' This method will recursively call itself to add to the timetable or change it. First we assign all the 
+		main shows we can. To do this we iterate through the timetable and the hours_per_week - as it contains all the
+		comedians we need as well as their hours. Then if the comedian themes contains all the topics the demographic likes
+		then it can be added to the timetable as a main show as long as the hours_per_week is less than 4 and hours_per_day is 
+		less than 2 or 0. Additionally the max length of days should be 10. We then adapt the main show list to remove the 
+		current demographic as well as change the hours_per_week and hours_per_day and call the method again. If there is no
+		backtracking to be done we undo these assignments.
+		Once we have assigned all main shows we look at the test shows. We once again iterate through timetable and hours_per_week
+		and check that hours_per_week is less than 4 and hours_per_day is less than 2 as previous. However, for a test show
+		we check that if any of a comedians themes is liked by a demographic it is added to the test show. So if we abide
+		by these rules we add the comedian, demographic and test to the timetable and make similar changes according to 
+		specification. Then we call the method again if this returns false then we revert our previous assignments.
+		Finally when all assignments made return True, unless no valid assignments to be made.		
+	'''
 	def recursiveTestBacktracking(self, timeTable, main_List, test_List, hours_per_week, hours_per_day):		
+		# Assign all possible main shows to a comedian
 		if main_List:			
-			# Get the next demographic
+			# Get the next demographic of the main show
 			main = main_List[0]
+			# keep a count for the hours_per_day variable
 			count = -1
 			# iterate through the timetable
 			for day in timeTable:
-				count+= 1
-				print(count)
+				# Increase count for each day, 0-4
+				count+= 1				
 				# iterate through the comedians
 				for comedian, hours in hours_per_week.items():					
-					# Check comedian contains all themes of the demographic
-					# Check if comedian can therefore perform a main show										
-					if all(topic in comedian.themes for topic in main.topics) and (hours < 4) and (hours_per_day[(comedian,count)] == 0) and len(day) != 10:											
-						# Check that the assignment of this main show doesn't breach the fact a comedian can perform max four hours a week and etc
-						#print(hours_per_week[comedian])												
-						# remove the demographic and comedian as it has been assigned						
-						#com_List.remove(comedian)						
+					# Check comedian contains all themes of the demographic, has not performed more than 4 hours a week 
+					# and has not performed more than 2 hours this day														
+					if all(topic in comedian.themes for topic in main.topics) and (hours < 4) and (hours_per_day[(comedian,count)] == 0) and len(day) != 10:																																			
+						# Remove the main show demographic as it has been assigned																
 						main_List.remove(main)
-						# Add the comedian and demo to the day
+						# Add the comedian and demo to the day under main show type
 						day.append((comedian, main, "main"))							
 
 						# Update the number of hours performed per week and per day
 						hours_per_week[comedian] = hours + 2	
-						hours_per_day[(comedian,count)] += 2		
-						#print(timeTable)
+						hours_per_day[(comedian,count)] += 2								
 
 						# Recursively assign with the updated values
 						if self.recursiveTestBacktracking(timeTable, main_List, test_List, hours_per_week, hours_per_day):								
 							return True
-						#print("revert")
+						
 						# Undo the previous if no backtracking to be done
 						day.pop()
-						main_List.append(main)
-						#com_List.append(comedian)
+						main_List.append(main)						
 						hours_per_week[comedian] -= 2
-						hours_per_day[(comedian,count)] -= 2				
+						hours_per_day[(comedian,count)] -= 2
+
+		# Once all main shows have been assigned look to assign the test shows
 		elif test_List:	
-			day_count = -1			
+			# Once again keep a count for hours_per_day
+			day_count = -1	
+			# Get the next demographic of the test show		
 			test = test_List[0]
 			# iterate through the timetable
 			for day in timeTable:
 				day_count += 1
 				# iterate through the comedians
 				for comedian, hours in hours_per_week.items():	
-				# Check if comedian can perform a test show
-					if any(topic in comedian.themes for topic in test.topics) and (hours < 4) and (hours_per_day[(comedian, day_count)] < 2) and len(day) != 10:						
-						# Check that the assignment of this main show doesn't breach the fact a comedian can perform max four hours a week
-						#if (hours_per_week[comedian] + 1 <= 4): #and hours_per_day[comedian] + 1 <= 2):								
-						# remove the demographic and comedian as it has been assigned
-						# if hours_per_day[comedian] == 2:
-						# 	com_List.remove(comedian)						
+					# Check if comedian can perform a test show - ie any comedian themes is liked by the demographic and comedian hasnt
+					# perfromed more than 2 hours a day or 4 hours a week
+					if any(topic in comedian.themes for topic in test.topics) and (hours < 4) and (hours_per_day[(comedian, day_count)] < 2) and len(day) != 10:												
+						# Remove the test show demographic as it has been assigned
 						test_List.remove(test)
-						# Add the comedian and demo to the day
+						# Add the comedian and demo to the day under test show type
 						day.append((comedian, test, "test"))
 
 						# Update the number of hours performed per week and per day
@@ -231,12 +259,11 @@ class Scheduler:
 
 						# Undo the previous if no backtracking to be done
 						day.pop()
-						test_List.append(test)
-						#com_List.append(comedian)
+						test_List.append(test)						
 						hours_per_week[comedian] -= 1
-						hours_per_day[(comedian, day_count)] -= 1										
-				# for comedian in hours_per_week.items():
-				# 	hours_per_day[comedian][day] = 0
+						hours_per_day[(comedian, day_count)] -= 1	
+
+		# All shows have been assigned - complete timetable													
 		else:
 			return True
 		# If no valid assignment found backtrack to previous slot
